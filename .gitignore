@@ -1,0 +1,4 @@
+echo "/vendor
+/node_modules
+.env
+/storage/*.key" > .gitignore
