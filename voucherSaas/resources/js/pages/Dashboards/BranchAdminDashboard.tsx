@@ -1,10 +1,11 @@
 import DashboardLayout from '@/layouts/dashboard-layout';
 import * as React from 'react';
 import type { PageProps } from '@/types';
+import AppLayout from '@/layouts/app-layout';
 
 export default function BranchAdminDashboard({ auth }: PageProps) {
     return (
-        <DashboardLayout
+        <AppLayout
             title="Branch Admin Dashboard"
             header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Branch Admin Dashboard</h2>}
         >
@@ -15,6 +16,6 @@ export default function BranchAdminDashboard({ auth }: PageProps) {
                     </div>
                 </div>
             </div>
-        </DashboardLayout>
+        </AppLayout>
     );
 }

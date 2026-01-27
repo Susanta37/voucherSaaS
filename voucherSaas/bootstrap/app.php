@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
         $middleware->alias([
+            
             'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
             'companyadmin' => \App\Http\Middleware\EnsureCompanyAdmin::class,
             'branchadmin' => \App\Http\Middleware\EnsureBranchAdmin::class,
@@ -29,7 +30,6 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
-            RedirectToRoleDashboard::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

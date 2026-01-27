@@ -23,7 +23,7 @@ class DashboardController extends Controller
         }
 
         if ($user->hasRole('branch_admin')) {
-            return redirect()->route('dashboard.branch-admin');
+            return redirect()->route('branchadmin.dashboard');
         }
 
         if ($user->hasRole('employee')) {
@@ -42,9 +42,59 @@ class DashboardController extends Controller
     }
 
     public function companyAdminDashboard(): Response
-    {
-        return Inertia::render('Dashboards/CompanyAdminDashboard');
-    }
+{
+    $user = Auth::user();
+    $companyId = $user->company_id;
+
+    // Branch stats
+    $totalBranches = \App\Models\Branch::count();
+    $activeBranches = \App\Models\Branch::where('is_active', true)->count();
+
+    // User stats
+    $totalUsers = \App\Models\User::count();
+    $activeUsers = \App\Models\User::where('is_active', true)->count();
+    $disabledUsers = \App\Models\User::where('is_active', false)->count();
+
+    // Users by role
+    $usersByRole = \Spatie\Permission\Models\Role::withCount('users')
+        ->whereIn('name', ['company_admin', 'branch_admin', 'employee'])
+        ->get()
+        ->map(fn ($r) => [
+            'role' => $r->name,
+            'count' => $r->users_count,
+        ]);
+
+    // Recent users
+    $recentUsers = \App\Models\User::with(['branch:id,name', 'roles:name'])
+        ->latest()
+        ->limit(5)
+        ->get();
+
+    // Branch-wise user count
+    $usersByBranch = \App\Models\Branch::withCount('users')
+        ->orderByDesc('users_count')
+        ->limit(5)
+        ->get(['id', 'name']);
+
+    return Inertia::render('Dashboards/CompanyAdminDashboard', [
+        'kpis' => [
+            'branches' => [
+                'total' => $totalBranches,
+                'active' => $activeBranches,
+            ],
+            'users' => [
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'disabled' => $disabledUsers,
+            ],
+        ],
+        'usersByRole' => $usersByRole,
+        'usersByBranch' => $usersByBranch,
+        'recentUsers' => $recentUsers,
+    ]);
+}
+
+    
 
     public function branchAdminDashboard(): Response
     {

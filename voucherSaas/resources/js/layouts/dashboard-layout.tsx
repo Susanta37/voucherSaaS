@@ -2,6 +2,8 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Head } from '@inertiajs/react';
 import { Separator } from '@/components/ui/separator';
+import { useFlashToast } from "@/hooks/useFlashToast";
+
 
 export default function DashboardLayout({
     header,
@@ -12,6 +14,7 @@ export default function DashboardLayout({
     children: React.ReactNode;
     title: string;
 }) {
+    useFlashToast();
     return (
         <SidebarProvider>
             <Head title={title} />

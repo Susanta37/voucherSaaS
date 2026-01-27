@@ -13,31 +13,84 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Users, Building2, Shield, KeyRound, Ticket, QrCode } from 'lucide-react';
 import AppLogo from './app-logo';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    // {
-    //     title: 'Repository',
-    //     href: 'https://github.com/laravel/react-starter-kit',
-    //     icon: Folder,
-    // },
-    // {
-    //     title: 'Documentation',
-    //     href: 'https://laravel.com/docs/starter-kits#react',
-    //     icon: BookOpen,
-    // },
-];
+import { usePermission } from '@/hooks/usePermission';
 
 export function AppSidebar() {
+    const { can } = usePermission();
+
+    // ✅ Main sidebar based on permissions (Enterprise approach)
+    const mainNavItems: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+         ...(can('users.view')
+            ? [
+                  {
+                      title: 'Employees',
+                      href: '/branch/employees',
+                      icon: Users,
+                  },
+              ]
+            : []),
+
+        ...(can('vouchers.view')
+            ? [
+                  {
+                      title: 'Vouchers',
+                      href: '/branch/vouchers',
+                      icon: Ticket,
+                  },
+              ]
+            : []),
+
+        ...(can('vouchers.claim.view')
+            ? [
+                  {
+                      title: 'Voucher Claims',
+                      href: '/branch/vouchers',
+                      icon: QrCode,
+                  },
+              ]
+            : []),
+
+      
+    ];
+
+    // ✅ Footer links (open same page)
+    const footerNavItems: NavItem[] = [
+        ...(can('branches.view')
+            ? [
+                  {
+                      title: 'Branches',
+                      href: '/admin/branches',
+                      icon: Building2,
+                  },
+              ]
+            : []),
+
+        ...(can('users.view')
+            ? [
+                  {
+                      title: 'Users',
+                      href: '/admin/users',
+                      icon: Users,
+                  },
+              ]
+            : []),
+            ...(can("roles.view")
+            ? [{ title: "Roles", href: "/admin/roles", icon: Shield }]
+            : []),
+
+            ...(can("permissions.view")
+            ? [{ title: "Permissions", href: "/admin/permissions", icon: KeyRound }]
+            : []),
+
+    ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -57,7 +110,8 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+                
+                <NavFooter items={footerNavItems} className="mt-auto border rounded-2xl" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

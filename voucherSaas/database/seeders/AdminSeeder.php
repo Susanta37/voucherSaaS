@@ -19,5 +19,12 @@ class AdminSeeder extends Seeder
         );
 
         $user->assignRole('company_admin');
+        $user->givePermissionTo([
+        'users.view', 'users.create', 'users.edit', 'users.delete',
+        'branches.view', 'branches.create', 'branches.edit', 'branches.delete',
+        'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
+        'permissions.view',
+    ]);
+
     }
 }
