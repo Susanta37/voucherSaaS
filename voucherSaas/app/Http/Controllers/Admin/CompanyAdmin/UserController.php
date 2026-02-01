@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -164,122 +165,93 @@ class UserController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return back()->with('error', 'Something went wrong');
+            return back()
+                ->withInput()
+                ->with('error', 'Something went wrong: ' . $e->getMessage());
         }
     }
 
-    public function edit(Request $request, User $user): Response
+     public function edit(Request $request, User $user): Response
     {
-        try {
-            $companyId = $request->user()->company_id;
+        abort_if($user->company_id !== $request->user()->company_id, 403);
 
-            // Security: user must belong to same company
-            abort_if($user->company_id !== $companyId, 403);
-
-            $branches = Branch::query()
-                ->where('company_id', $companyId)
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
-
-            $roles = Role::query()
-                ->whereIn('name', ['branch_admin', 'employee'])
-                ->pluck('name');
-
-            $permissions = Permission::query()
-                ->orderBy('name')
-                ->pluck('name');
-
-            return Inertia::render('CompanyAdmin/Users/Edit', [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'whatsapp' => $user->whatsapp,
-                    'branch_id' => $user->branch_id,
-                    'role' => $user->roles->pluck('name')->first() ?? 'employee',
-                    'is_active' => (bool) $user->is_active,
-                    'permissions' => $user->permissions->pluck('name')->toArray(),
-                ],
-                'branches' => $branches,
-                'roles' => $roles,
-                'permissions' => $permissions,
-            ]);
-        } catch (\Throwable $e) {
-            report($e);
-
-            return Inertia::render('CompanyAdmin/Users/Edit', [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name ?? '',
-                    'email' => $user->email ?? '',
-                    'phone' => $user->phone ?? null,
-                    'whatsapp' => $user->whatsapp ?? null,
-                    'branch_id' => $user->branch_id ?? null,
-                    'role' => $user->roles->pluck('name')->first() ?? 'employee',
-                    'is_active' => (bool) ($user->is_active ?? false),
-                    'permissions' => $user->permissions->pluck('name')->toArray() ?? [],
-                ],
-                'branches' => [],
-                'roles' => [],
-                'permissions' => [],
-                'error' => 'Something went wrong',
-            ]);
-        }
+        return Inertia::render('CompanyAdmin/Users/Edit', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'whatsapp' => $user->whatsapp,
+                'branch_id' => $user->branch_id,
+                'role' => $user->getRoleNames()->first(),
+                'is_active' => (bool) $user->is_active,
+                'permissions' => $user->getPermissionNames(),
+            ],
+            'branches' => Branch::where('company_id', $request->user()->company_id)->get(['id', 'name']),
+            'roles' => ['company_admin', 'branch_admin', 'employee'],
+            'permissions' => Permission::pluck('name'),
+        ]);
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
         try {
-            $companyId = $request->user()->company_id;
-
-            abort_if($user->company_id !== $companyId, 403);
+            abort_if($user->company_id !== $request->user()->company_id, 403);
 
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+                'email' => ['required', 'email', 'unique:users,email,' . $user->id],
                 'phone' => ['nullable', 'string', 'max:30'],
                 'whatsapp' => ['nullable', 'string', 'max:30'],
-                'branch_id' => ['required', 'exists:branches,id'],
-                'role' => ['required', 'in:branch_admin,employee'],
-                'password' => ['nullable', 'string', 'min:8'],
-                'is_active' => ['required', 'boolean'],
-
-                'permissions' => ['nullable', 'array'],
+                'role' => ['required', 'in:company_admin,branch_admin,employee'],
+                'branch_id' => [
+                    'nullable',
+                    'exists:branches,id',
+                    function ($attr, $value, $fail) use ($request) {
+                        if (in_array($request->role, ['branch_admin', 'employee']) && empty($value)) {
+                            $fail('Branch is required for this role.');
+                        }
+                    },
+                ],
+                'password' => ['nullable', 'min:8'],
+                'is_active' => ['boolean'],
+                'permissions' => ['array'],
                 'permissions.*' => ['string', 'exists:permissions,name'],
             ]);
 
-            // Ensure branch belongs to this company
-            $branch = Branch::query()
-                ->where('company_id', $companyId)
-                ->where('id', $validated['branch_id'])
-                ->firstOrFail();
+            $branchId = null;
+
+            if (in_array($validated['role'], ['branch_admin', 'employee'])) {
+                $branchId = Branch::where('company_id', $request->user()->company_id)
+                    ->where('id', $validated['branch_id'])
+                    ->firstOrFail()
+                    ->id;
+            }
 
             $user->update([
-                'branch_id' => $branch->id,
+                'branch_id' => $branchId,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'phone' => $validated['phone'] ?? null,
-                'whatsapp' => $validated['whatsapp'] ?? null,
+                'phone' => $validated['phone'],
+                'whatsapp' => $validated['whatsapp'],
                 'is_active' => $validated['is_active'],
             ]);
 
             if (!empty($validated['password'])) {
-                $user->update([
-                    'password' => Hash::make($validated['password']),
-                ]);
+                $user->update(['password' => Hash::make($validated['password'])]);
             }
 
             $user->syncRoles([$validated['role']]);
             $user->syncPermissions($validated['permissions'] ?? []);
 
-            return to_route('companyadmin.users.index')
-                ->with('success', '✅ User updated successfully!');
+            return back()->with('success', '✅ User updated successfully');
         } catch (\Throwable $e) {
-            report($e);
+            Log::error('User update failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+            ]);
 
-            return back()->with('error', 'Something went wrong');
+            return back()->with('error', $e->getMessage());
         }
     }
 

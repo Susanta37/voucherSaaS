@@ -13,7 +13,7 @@ type UserPayload = {
     email: string;
     phone?: string | null;
     whatsapp?: string | null;
-    branch_id: number;
+    branch_id: number | null;
     role: string;
     is_active: boolean;
     permissions: string[];
@@ -35,7 +35,7 @@ export default function EditUser({
         email: user.email,
         phone: user.phone ?? "",
         whatsapp: user.whatsapp ?? "",
-        branch_id: String(user.branch_id),
+        branch_id: user.branch_id ? String(user.branch_id) : "",
         role: user.role,
         password: "",
         is_active: user.is_active,
@@ -45,7 +45,17 @@ export default function EditUser({
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        router.put(`/admin/users/${user.id}`, form, {
+        const payload = {
+            ...form,
+
+            // ✅ FIX: only send branch_id when required
+            branch_id:
+                form.role === "company_admin"
+                    ? null
+                    : Number(form.branch_id || null),
+        };
+
+        router.put(`/admin/users/${user.id}`, payload, {
             preserveScroll: true,
         });
     };
@@ -137,6 +147,7 @@ export default function EditUser({
                                     }
                                     className="mt-2 h-10 w-full rounded-xl border border-border/60 bg-background px-3 text-sm outline-none"
                                 >
+                                    <option value="">—</option>
                                     {branches.map((b) => (
                                         <option key={b.id} value={b.id}>
                                             {b.name}
@@ -200,7 +211,7 @@ export default function EditUser({
                         </div>
                     </div>
 
-                    {/* ✅ Permission Picker */}
+                    {/* Permission Picker */}
                     <PermissionPicker
                         allPermissions={permissions}
                         value={form.permissions}

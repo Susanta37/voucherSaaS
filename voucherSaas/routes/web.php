@@ -9,12 +9,30 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\Admin\CompanyAdmin\RoleController;
 use App\Http\Controllers\Admin\CompanyAdmin\PermissionController;
+use App\Http\Controllers\Admin\CompanyAdmin\TemplateController;
+use App\Http\Controllers\Branch\EmployeeController;
+use App\Http\Controllers\Branch\PPCController;
+use App\Http\Controllers\PublicClaimController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
     ]);
 })->name('home');
+
+Route::get('/test-qr', function () {
+    $svg = \App\Services\QRCodeService::generateSvg('QR SAFE WORKING', 250);
+
+    return response($svg, 200, [
+        'Content-Type' => 'image/svg+xml',
+    ]);
+});
+
+
+
+// ✅ Public Route for Customer to scan/claim (Outside auth)
+Route::get('/claim/{code}', [PublicClaimController::class, 'show'])->name('ppc.claim.form');
+Route::post('/claim/{code}', [PublicClaimController::class, 'submit'])->name('ppc.claim.submit');
 
 Route::middleware(['auth'])->group(function () {
     // Redirect to the correct dashboard after login
@@ -31,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('dashboard.company-admin');
    
     Route::middleware(['companyadmin'])->prefix('admin')->name('companyadmin.')->group(function (): void {
+         Route::resource('templates', TemplateController::class);
 
         Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
         Route::get('/branches/create', [BranchController::class, 'create'])->name('branches.create');
@@ -70,16 +89,45 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Branch Admin Dashboard
-   Route::middleware(['auth', 'branchadmin'])
+ Route::middleware([
+        'auth',
+        'role:company_admin|branch_admin',
+        'permission:users.view'
+    ])
     ->prefix('branch')
-    ->name('branchadmin.')
+    ->name('branch.')
     ->group(function () {
 
-        // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'branchAdminDashboard'])
             ->name('dashboard');
 
-       
+        // ✅ Employees (company admin + branch admin)
+        Route::get('/employees', [EmployeeController::class, 'index'])
+            ->name('employees.index');
+
+            // PPC Routes
+    Route::get('/vouchers', [PPCController::class, 'index'])
+        ->middleware('permission:vouchers.view')
+        ->name('vouchers.index');
+    Route::get('/templates', [TemplateController::class, 'index'])
+        ->middleware('permission:vouchers.view')
+        ->name('vouchers.templates');
+
+    Route::post('/vouchers', [PPCController::class, 'store'])
+        ->middleware('permission:vouchers.create')
+        ->name('vouchers.store');
+
+    Route::get('/vouchers/claims', [PPCController::class, 'claims'])
+        ->middleware('permission:vouchers.claim.view')
+        ->name('vouchers.claims');
+
+        // Scanner UI
+    Route::get('/scanner', function () {
+        return Inertia::render('Branch/PPC/Scanner');
+    })->name('scanner');
+
+    // Verification Logic
+    Route::post('/vouchers/verify', [PPCController::class, 'verify'])->name('vouchers.verify');
     });
 
     // Employee Dashboard

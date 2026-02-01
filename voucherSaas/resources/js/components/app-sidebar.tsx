@@ -27,12 +27,21 @@ export function AppSidebar() {
             href: dashboard(),
             icon: LayoutGrid,
         },
-         ...(can('users.view')
+        //  ...(can('users.view')
+        //     ? [
+        //           {
+        //               title: 'Employees',
+        //               href: '/branch/employees',
+        //               icon: Users,
+        //           },
+        //       ]
+        //     : []),
+             ...(can('vouchers.view')
             ? [
                   {
-                      title: 'Employees',
-                      href: '/branch/employees',
-                      icon: Users,
+                      title: 'Premsons Privilege Templates',
+                      href: '/branch/templates',
+                      icon: Folder,
                   },
               ]
             : []),
@@ -40,7 +49,7 @@ export function AppSidebar() {
         ...(can('vouchers.view')
             ? [
                   {
-                      title: 'Vouchers',
+                      title: 'Premsons Privilege Code',
                       href: '/branch/vouchers',
                       icon: Ticket,
                   },
@@ -50,8 +59,17 @@ export function AppSidebar() {
         ...(can('vouchers.claim.view')
             ? [
                   {
-                      title: 'Voucher Claims',
-                      href: '/branch/vouchers',
+                      title: 'PPC Claims',
+                      href: '/branch/vouchers/claims',
+                      icon: QrCode,
+                  },
+              ]
+            : []),
+            ...(can('vouchers.claim.view')
+            ? [
+                  {
+                      title: 'PPC Scanner',
+                      href: '/branch/vouchers/scanner',
                       icon: QrCode,
                   },
               ]
