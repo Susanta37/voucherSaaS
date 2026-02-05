@@ -17,6 +17,7 @@ class VoucherClaim extends Model
     }
 
     protected $fillable = [
+        'company_id',
         'voucher_id',
         'customer_name',
         'customer_email',
@@ -25,6 +26,7 @@ class VoucherClaim extends Model
         'ip_address',
         'user_agent',
     ];
+
 
     public function voucher(): BelongsTo
     {

@@ -12,32 +12,12 @@ class RedirectToRoleDashboard
     {
         $user = $request->user();
 
-        if (! $user) {
-            return $next($request);
-        }
-
-        // If user is visiting "/", send to correct dashboard
-        if ($request->is('/')) {
-            return redirect()->to($this->dashboardUrl($user));
+        // If user is visiting "/" but is logged in, send them to /dashboard 
+        // which will trigger the Controller redirect logic.
+        if ($user && $request->is('/')) {
+            return redirect()->route('dashboard');
         }
 
         return $next($request);
-    }
-
-    private function dashboardUrl($user): string
-    {
-        if ($user->hasRole('super_admin')) {
-            return '/super-admin/dashboard';
-        }
-
-        if ($user->hasRole('company_admin')) {
-            return '/admin/dashboard';
-        }
-
-        if ($user->hasRole('branch_admin')) {
-            return '/branch/dashboard';
-        }
-
-        return '/employee/dashboard';
     }
 }

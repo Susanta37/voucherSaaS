@@ -122,12 +122,15 @@ Route::middleware(['auth'])->group(function () {
         ->name('vouchers.claims');
 
         // Scanner UI
-    Route::get('/scanner', function () {
+    Route::get('/vouchers/scanner', function () {
         return Inertia::render('Branch/PPC/Scanner');
     })->name('scanner');
 
     // Verification Logic
-    Route::post('/vouchers/verify', [PPCController::class, 'verify'])->name('vouchers.verify');
+    Route::post('/vouchers/verify', [PPCController::class, 'verify'])
+        ->middleware('permission:vouchers.verify')
+        ->name('vouchers.verify');
+
     });
 
     // Employee Dashboard

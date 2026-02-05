@@ -7,6 +7,9 @@ use App\Models\VoucherTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+
 
 class TemplateController extends Controller
 {
@@ -23,27 +26,37 @@ class TemplateController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string',
-            'background_image' => 'required|image',
-            'layout' => 'required',
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string',
+        'background_image' => 'required|image',
+        'layout' => 'required',
+    ]);
 
-        $layout = is_string($request->layout) ? json_decode($request->layout, true) : $request->layout;
+    $layout = is_string($request->layout)
+        ? json_decode($request->layout, true)
+        : $request->layout;
 
-        $path = $request->file('background_image')->store('templates', 'public');
+    $path = $request->file('background_image')->store('templates', 'public');
 
-        VoucherTemplate::create([
-            'company_id' => auth()->user()->company_id,
-            'name' => $request->name,
-            'background_image' => $path,
-            'layout' => $layout,
-            'is_active' => true,
-        ]);
+    // ✅ Read actual image size
+    $image = (new ImageManager(new Driver()))
+        ->read(Storage::disk('public')->path($path));
 
-        return redirect('/admin/templates');
-    }
+    $layout['image_width']  = $image->width();
+    $layout['image_height'] = $image->height();
+
+    VoucherTemplate::create([
+        'company_id'       => auth()->user()->company_id,
+        'name'             => $request->name,
+        'background_image' => $path,
+        'layout'           => $layout,
+        'is_active'        => true,
+    ]);
+
+    return redirect('/admin/templates');
+}
+
 
     public function edit(VoucherTemplate $template)
     {
